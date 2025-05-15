@@ -62,7 +62,7 @@ steps:
         
         # Publish to Pub/Sub with verbose output
         echo "\nPublishing to Pub/Sub topic..."
-        gcloud pubsub topics publish github-events --message-file=/workspace/event.json --project=$PROJECT_ID
+        gcloud pubsub topics publish github-events --message=/workspace/event.json --project=$PROJECT_ID
         
         echo "\nPublished event to github-events topic"
         
