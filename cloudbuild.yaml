@@ -4,7 +4,7 @@ steps:
     id: 'debug-info'
     entrypoint: 'bash'
     args:
-      - '-c'
+      - -c
       - |
         echo "=== DEBUG INFORMATION ==="
         echo "Build ID: $BUILD_ID"
@@ -15,10 +15,10 @@ steps:
         echo "Trigger Name: $TRIGGER_NAME"
         echo "=========================="
 
-        echo "\nAll Environment Variables:"
+        echo "All Environment Variables:"
         env | sort
 
-        echo "\nGit Information:"
+        echo "Git Information:"
         git log -1 || echo "Cannot access git information"
 
   # Publish event to Pub/Sub
@@ -26,41 +26,39 @@ steps:
     id: 'publish-to-pubsub'
     entrypoint: 'bash'
     args:
-      - '-c'
+      - -c
       - |
         echo "Creating JSON payload..."
-        JSON_PAYLOAD=$(cat <<EOF
-{
-  "repository": {
-    "name": "${REPO_NAME:-unknown}",
-    "full_name": "${PROJECT_ID:-unknown}/${REPO_NAME:-unknown}"
-  },
-  "ref": "refs/heads/${BRANCH_NAME:-unknown}",
-  "pusher": {
-    "name": "Cloud Build",
-    "email": "cloud-build@example.com"
-  },
-  "commits": [{
-    "id": "${COMMIT_SHA:-unknown}",
-    "message": "Triggered by Cloud Build - ${BUILD_ID:-unknown}",
-    "author": {
-      "name": "Cloud Build",
-      "email": "cloud-build@example.com"
-    }
-  }]
-}
-EOF
-)
+
+        JSON_PAYLOAD=$(printf '{
+          "repository": {
+            "name": "%s",
+            "full_name": "%s/%s"
+          },
+          "ref": "refs/heads/%s",
+          "pusher": {
+            "name": "Cloud Build",
+            "email": "cloud-build@example.com"
+          },
+          "commits": [{
+            "id": "%s",
+            "message": "Triggered by Cloud Build - %s",
+            "author": {
+              "name": "Cloud Build",
+              "email": "cloud-build@example.com"
+            }
+          }]
+        }' "$REPO_NAME" "$PROJECT_ID" "$REPO_NAME" "$BRANCH_NAME" "$COMMIT_SHA" "$BUILD_ID")
 
         echo "Final JSON payload:"
         echo "$JSON_PAYLOAD"
 
-        echo "\nPublishing to Pub/Sub topic: github-events"
+        echo "Publishing to Pub/Sub topic: github-events"
         gcloud pubsub topics publish github-events \
           --message="$JSON_PAYLOAD" \
           --project="${PROJECT_ID}"
 
-        echo "\nListing subscriptions for topic:"
+        echo "Listing subscriptions for topic:"
         gcloud pubsub topics list-subscriptions github-events \
           --project="${PROJECT_ID}" || echo "No subscriptions found or insufficient permissions"
 
@@ -70,3 +68,4 @@ options:
     - 'TOPIC_NAME=github-events'
 
 timeout: '600s'
+
